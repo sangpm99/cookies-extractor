@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./assets/css/bootstrap.css">
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <title>Cookie Extractor</title>
+</head>
+
+<body>
+    <div class="custom-cookies">
+        <h2>Cookie Extractor</h2>
+
+        <form>
+            <div class="mb-3 input-wrapper">
+                <label for="tokenInput" class="form-label">External Token</label>
+                <input type="text" class="form-control" id="tokenInput">
+            </div>
+            <div class="mb-3 input-wrapper">
+                <label for="storeIdInput" class="form-label">Store ID</label>
+                <input type="text" class="form-control" id="storeIdInput">
+            </div>
+            <div class="mb-3 input-wrapper">
+                <label for="timerInput" class="form-label">Time to repeat after each (minutes)</label>
+                <input type="text" class="form-control" id="timerInput">
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+
+        <div class="button-container">
+            <button class="start-btn" id="startButton">Start</button>
+            <button class="finish-btn" id="finishButton">Finish</button>
+        </div>
+    </div>
+
+    <script src="./assets/js/bootstrap.bundle.js"></script>
+    <script src="popup.js"></script>
+</body>
+
+</html>

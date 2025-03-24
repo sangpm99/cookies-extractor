@@ -1,0 +1,19 @@
+{
+  "action": {
+    "default_icon": {
+      "128": "/assets/images/favicon.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "manifest_version": 3,
+  "name": "Cookie Extractor",
+  "icons": {
+    "128": "assets/images/favicon.png"
+  },
+  "version": "1.0",
+  "permissions": ["cookies", "tabs", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
