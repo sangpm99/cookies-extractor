@@ -5,15 +5,22 @@
     },
     "default_popup": "popup.html"
   },
-  "manifest_version": 3,
-  "name": "Cookie Extractor",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["popup.js"],
+      "run_at": "document_end"
+    }
+  ],
   "icons": {
     "128": "assets/images/favicon.png"
   },
-  "version": "1.0",
+  "manifest_version": 3,
+  "name": "Cookie Extractor",
   "permissions": ["cookies", "tabs", "activeTab", "scripting"],
-  "host_permissions": ["<all_urls>"],
-  "background": {
-    "service_worker": "background.js"
-  }
+  "version": "1.0",
+  "host_permissions": ["<all_urls>"]
 }

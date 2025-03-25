@@ -1,52 +1,71 @@
 body {
-    font-family: "Arial", sans-serif;
     margin: 20px;
     background-color: #f8f9fa;
-    width: 450px;
+    width: 700px;
+    font-size: 12px;
 }
 
 h2 {
     color: #607d8b;
     font-size: 1.5em;
-    margin-block-start: 0.83em;
-    margin-block-end: 0.83em;
-    margin-inline-start: 0;
-    margin-inline-end: 0;
     font-weight: bold;
     unicode-bidi: isolate;
 }
 
-.input-wrapper {
-    margin-bottom: 10px;
-    display: flex;
-    flex-direction: column;
+.w-100 {
+    width: 100% !important;
 }
-.input-wrapper label {
-    margin-bottom: 5px;
+
+.form-label {
+    color: #242424;
+    font-size: 1.2em;
+    font-weight: 500;
 }
-.input-wrapper input {
-    height: 30px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 5px;
-}
-.button-container {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-}
-button {
-    width: 45%;
-    height: 35px;
+
+.custom-btn {
+    padding: 5px 8px;
     border: none;
-    border-radius: 8px;
-    color: white;
+    border-radius: 4px;
     cursor: pointer;
+    font-weight: bold;
+    box-shadow: rgba(0, 0, 0, 0.12) 0 1px 3px, rgba(0, 0, 0, 0.24) 0 1px 2px;
+    color: #fff;
+    transition: opacity ease-in-out 0.25s;
 }
-.start-btn {
-    background: #28a745;
+
+.hover:hover {
+    opacity: 0.5;
 }
-.finish-btn {
-    background: #dc3545;
+
+.cursor-default {
+    cursor: default !important;
+}
+
+.btn-start {
+    background-color: #70a1ff;
+}
+
+.btn-finish {
+    background-color: #ff4757;
+}
+
+.btn-running {
+    background-color: #00b894;
+    display: none;
+}
+.btn-error {
+    background-color: #e74c3c;
+    display: none;
+}
+.btn-not-started {
+    background-color: #636e72;
+}
+.btn-copy {
+    color: #636e72;
+    background-color: transparent;
+    box-shadow: none;
+    font-size: 16px;
+}
+.btn-sm {
+    padding: 2px 5px;
 }

