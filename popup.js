@@ -1,105 +1,179 @@
-// Lấy các phần tử từ popup.html
-const tokenInput = document.getElementById("tokenInput");
-const storeIdInput = document.getElementById("storeIdInput");
-const timerInput = document.getElementById("timerInput");
-const startButton = document.getElementById("startButton");
-const finishButton = document.getElementById("finishButton");
-const production = document.getElementById("production");
-const development = document.getElementById("development");
-const btnRunning = document.getElementById("btnRunning");
-const btnError= document.getElementById("btnError");
-const btnNotStarted = document.getElementById("btnNotStarted");
-const cookies = document.getElementById("cookies");
-const copyCookies = document.getElementById("copyCookies");
-const userAgent = document.getElementById("userAgent");
-const copyUserAgent = document.getElementById("copyUserAgent");
-const csrfNonce = document.getElementById("csrfNonce");
-const copyCsrfNonce = document.getElementById("copyCsrfNonce");
+// 👉 Get all element from popup.html
+document.addEventListener("DOMContentLoaded", () => {
+    const tokenInput = document.getElementById("tokenInput");
+    const storeIdInput = document.getElementById("storeIdInput");
+    const timerInput = document.getElementById("timerInput");
+    const startButton = document.getElementById("startButton");
+    const finishButton = document.getElementById("finishButton");
+    const production = document.getElementById("production");
+    const development = document.getElementById("development");
+    const btnRunning = document.getElementById("btnRunning");
+    const btnError= document.getElementById("btnError");
+    const btnNotStarted = document.getElementById("btnNotStarted");
+    const cookies = document.getElementById("cookies");
+    const copyCookies = document.getElementById("copyCookies");
+    const userAgent = document.getElementById("userAgent");
+    const copyUserAgent = document.getElementById("copyUserAgent");
+    const csrfNonce = document.getElementById("csrfNonce");
+    const copyCsrfNonce = document.getElementById("copyCsrfNonce");
+    const startDateSpan = document.getElementById("startDateSpan");
+    const sentSpan = document.getElementById("sentSpan");
+    const sentSuccessSpan = document.getElementById("sentSuccessSpan");
+    const sentFailSpan = document.getElementById("sentFailSpan");
 
+    // 👉 Get value storage in localStorage to fill UI
+    tokenInput.value = localStorage.getItem("token") || "";
+    storeIdInput.value = localStorage.getItem("storeId") || "";
+    timerInput.value = localStorage.getItem("timer") || "1080";
+    const server = localStorage.getItem("server") || "production";
+    if (server === "development") {
+        development.checked = true;
+        production.checked = false;
+    } else {
+        development.checked = false;
+        production.checked = true;
+    }
+    cookies.value = localStorage.getItem("cookies") || "";
+    userAgent.value = localStorage.getItem("userAgent") || "";
+    csrfNonce.value = localStorage.getItem("csrfNonce") || "";
+    startDateSpan.innerText = localStorage.getItem("startDateSpan") || ""
+    sentSpan.innerText = localStorage.getItem("sentSpan") || "0"
+    sentSuccessSpan.innerText = localStorage.getItem("sentSuccessSpan") || "0"
+    sentFailSpan.innerText = localStorage.getItem("sentFailSpan") || "0"
 
-// Lấy giá trị từ localStorage nếu có
-tokenInput.value = localStorage.getItem("token") || "";
-storeIdInput.value = localStorage.getItem("storeId") || "";
-timerInput.value = localStorage.getItem("timer") || "";
+    btnNotStarted.style.display = localStorage.getItem("btnNotStarted") || "inline-block";
 
-if(localStorage.getItem("server") === "development"){
-  development.checked = true;
-  production.checked = false;
-} else {
-  production.checked = true;
-  development.checked = false;
-}
+    if(localStorage.getItem("status") === "running") {
+        btnNotStarted.style.display = "none";
+        btnRunning.style.display = "inline-block";
+        btnError.style.display = "none";
+    } else if (localStorage.getItem("status") === "error") {
+        btnNotStarted.style.display = "none";
+        btnRunning.style.display = "none";
+        btnError.style.display = "inline-block";
+    } else {
+        btnNotStarted.style.display = "inline-block";
+        btnRunning.style.display = "none";
+        btnError.style.display = "none";
+    }
 
-copyCookies.addEventListener("click", () => {
-  navigator.clipboard.writeText(cookies.value);
-});
+    // 👉 Event when starting
+    startButton.addEventListener("click", () => {
+        onRunning();
+        // 👉 First Run
+        userAgent.value = "Please wait...";
+        csrfNonce.value = "Please wait...";
+        cookies.value = "Please wait...";
 
-copyUserAgent.addEventListener("click", () => {
-  navigator.clipboard.writeText(userAgent.value);
-});
+        startDateSpan.innerText = getTimeNow();
+        sentSpan.innerText = "0";
+        sentSuccessSpan.innerText = "0";
+        sentFailSpan.innerText = "0";
 
-copyCsrfNonce.addEventListener("click", () => {
-  navigator.clipboard.writeText(csrfNonce.value);
-});
+        localStorage.setItem("token", tokenInput.value || "");
+        localStorage.setItem("storeId", storeIdInput.value || "");
+        localStorage.setItem("timer", timerInput.value || "1080");
+        localStorage.setItem("server", development.checked ? "development" : "production");
 
-startButton.addEventListener("click", () => {
-  if(tokenInput.value) {
-    localStorage.setItem("token", tokenInput.value);
-  }
-  if(storeIdInput.value) {
-    localStorage.setItem("storeId", storeIdInput.value);
-  }
-  if(timerInput.value) {
-    localStorage.setItem("timer", timerInput.value);
-  }
+        localStorage.setItem("startDateSpan", getTimeNow());
+        localStorage.setItem("sentSpan", sentSpan.innerText || "0");
+        localStorage.setItem("sentSuccessSpan", sentSuccessSpan.innerText || "0");
+        localStorage.setItem("sentFailSpan", sentFailSpan.innerText || "0");
 
-  if(development.checked) {
-    localStorage.setItem("server", "development");
-  } else {
-    localStorage.setItem("server", "production");
-  }
+        const token = localStorage.getItem("token") || "";
+        const storeId = localStorage.getItem("storeId") || "";
+        const timer = Number(localStorage.getItem("timer")) || 1080;
+        const server = localStorage.getItem("server") || "production";
+        const sent = localStorage.getItem("sentSpan") || "0";
+        const sentSuccess = localStorage.getItem("sentSuccessSpan") || "0";
+        const sentFail = localStorage.getItem("sentFailSpan") || "0";
 
-  const token = tokenInput.value || localStorage.getItem("token");
-  const storeId = storeIdInput.value || localStorage.getItem("storeId");
-  const timer = parseInt(timerInput.value || localStorage.getItem("timer"));
-  let server = "production";
-  if(development.checked) {
-    server = "development";
-  }
-
-  // Gửi message cho background
-  setTimeout(() => {
-    const csrfMeta = document.querySelector('meta[name="csrf_nonce"]');
-    chrome.runtime.sendMessage({
-      action: "startCookieExtractor",
-      token: token,
-      storeId: storeId,
-      timer: timer,
-      csrfNonce: csrfMeta.content,
-      server: server,
+        chrome.runtime.sendMessage({
+            action: "startCookieExtractor",
+            token,
+            storeId,
+            timer,
+            server,
+            sent,
+            sentSuccess,
+            sentFail,
+        });
     });
-  }, 5000);
+
+    finishButton.addEventListener("click", () => {
+        chrome.runtime.sendMessage({ action: "finishCookieExtractor" });
+    });
+
+    // 👉 Data response from background.js
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === "sendData") {
+            try {
+                const data = message.data;
+                console.log(data)
+                userAgent.value = data.userAgent || "Data Not Found";
+                csrfNonce.value = data.csrfNonce || "Data Not Found";
+                cookies.value = data.cookies ? JSON.stringify(data.cookies) : "Data Not Found";
+                sentSpan.innerText = data.sent;
+                sentSuccessSpan.innerText = data.sentSuccess;
+                sentFailSpan.innerText = data.sentFail;
+
+                localStorage.setItem("userAgent", data.userAgent);
+                localStorage.setItem("csrfNonce", data.csrfNonce);
+                localStorage.setItem("cookies", JSON.stringify(data.cookies));
+                localStorage.setItem("sentSpan", JSON.stringify(data.sent));
+                localStorage.setItem("sentSuccessSpan", JSON.stringify(data.sentSuccess));
+                localStorage.setItem("sentFailSpan", JSON.stringify(data.sentFail));
+            } catch (error) {
+                console.log(error);
+            }
+        }
+    });
+
+    const onNotStart = () => {
+        btnNotStarted.style.display = "inline-block";
+        btnRunning.style.display = "none";
+        btnError.style.display = "none";
+        localStorage.setItem("status", "notStarted");
+    }
+
+    const onRunning = () => {
+        btnNotStarted.style.display = "none";
+        btnRunning.style.display = "inline-block";
+        btnError.style.display = "none";
+        localStorage.setItem("status", "running");
+    }
+
+    const onError = () => {
+        btnNotStarted.style.display = "none";
+        btnRunning.style.display = "none";
+        btnError.style.display = "inline-block";
+        localStorage.setItem("status", "error");
+    }
+
+    // 👉 Handle copy cookies
+    copyCookies.addEventListener("click", () => {
+        if (cookies.value) {
+            navigator.clipboard.writeText(cookies.value);
+        }
+    });
+
+    // 👉 Handle copy csrfNonce
+    copyCsrfNonce.addEventListener("click", () => {
+        if (csrfNonce.value) {
+            navigator.clipboard.writeText(csrfNonce.value);
+        }
+    });
+
+    // 👉 Handle copy userAgent
+    copyUserAgent.addEventListener("click", () => {
+        navigator.clipboard.writeText(userAgent.value);
+    });
 });
 
-
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.action === "updatePopupData") {
-    if (message.cookies) {
-      cookies.value = message.cookies;
-    }
-    if (message.userAgent) {
-      userAgent.value = message.userAgent;
-    }
-    if (message.csrfNonce) {
-      csrfNonce.value = message.csrfNonce;
-    }
-  }
-});
-
-
-// Bạn có thể xử lý sự kiện cho finishButton tương tự
-finishButton.addEventListener("click", () => {
-  chrome.runtime.sendMessage({
-    action: "finishCookieExtractor",
-  });
-});
+const getTimeNow = () => {
+    const today = new Date();
+    const day = today.getDate();
+    const month = today.getMonth() + 1;
+    const year = today.getFullYear();
+    return(`${day}/${month}/${year}`);
+}

