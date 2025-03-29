@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cookies Extractor",
   "version": "1.0",
-  "permissions": ["scripting", "activeTab", "cookies", "tabs"],
+  "permissions": ["scripting", "activeTab", "cookies", "tabs", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

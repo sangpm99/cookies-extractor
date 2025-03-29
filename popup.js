@@ -8,7 +8,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const production = document.getElementById("production");
     const development = document.getElementById("development");
     const btnRunning = document.getElementById("btnRunning");
-    const btnError= document.getElementById("btnError");
     const btnNotStarted = document.getElementById("btnNotStarted");
     const cookies = document.getElementById("cookies");
     const copyCookies = document.getElementById("copyCookies");
@@ -46,15 +45,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if(localStorage.getItem("status") === "running") {
         btnNotStarted.style.display = "none";
         btnRunning.style.display = "inline-block";
-        btnError.style.display = "none";
-    } else if (localStorage.getItem("status") === "error") {
-        btnNotStarted.style.display = "none";
-        btnRunning.style.display = "none";
-        btnError.style.display = "inline-block";
     } else {
         btnNotStarted.style.display = "inline-block";
         btnRunning.style.display = "none";
-        btnError.style.display = "none";
     }
 
     // 👉 Event when starting
@@ -84,9 +77,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const storeId = localStorage.getItem("storeId") || "";
         const timer = Number(localStorage.getItem("timer")) || 1080;
         const server = localStorage.getItem("server") || "production";
-        const sent = localStorage.getItem("sentSpan") || "0";
-        const sentSuccess = localStorage.getItem("sentSuccessSpan") || "0";
-        const sentFail = localStorage.getItem("sentFailSpan") || "0";
 
         chrome.runtime.sendMessage({
             action: "startCookieExtractor",
@@ -94,9 +84,6 @@ document.addEventListener("DOMContentLoaded", () => {
             storeId,
             timer,
             server,
-            sent,
-            sentSuccess,
-            sentFail,
         });
     });
 
@@ -127,27 +114,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.log(error);
             }
         }
+        if(message.action === "finish") {
+            onNotStart();
+            sentSpan.innerText = "0";
+            sentSuccessSpan.innerText = "0";
+            sentFailSpan.innerText = "0";
+            localStorage.setItem("sentSpan", "0");
+            localStorage.setItem("sentSuccessSpan", "0");
+            localStorage.setItem("sentFailSpan", "0");
+        }
     });
 
     const onNotStart = () => {
         btnNotStarted.style.display = "inline-block";
         btnRunning.style.display = "none";
-        btnError.style.display = "none";
         localStorage.setItem("status", "notStarted");
     }
 
     const onRunning = () => {
         btnNotStarted.style.display = "none";
         btnRunning.style.display = "inline-block";
-        btnError.style.display = "none";
         localStorage.setItem("status", "running");
-    }
-
-    const onError = () => {
-        btnNotStarted.style.display = "none";
-        btnRunning.style.display = "none";
-        btnError.style.display = "inline-block";
-        localStorage.setItem("status", "error");
     }
 
     // 👉 Handle copy cookies

