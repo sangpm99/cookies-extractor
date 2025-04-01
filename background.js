@@ -138,7 +138,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 const validateCookies = (cookies) => {
-    const required = ["session-key-www", "et-v1-1-1-_etsy_com", "session-key-apex"];
+    const required = ["session-key-www"];
+    // , "et-v1-1-1-_etsy_com", "session-key-apex"
     const cookieNames = cookies.map(c => c.name);
     return required.every(name => cookieNames.includes(name));
 };
