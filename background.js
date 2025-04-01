@@ -39,27 +39,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
                         await new Promise(resolve => setTimeout(resolve, delayTime));
 
-                        const domResult = await new Promise(resolve => {
-                            chrome.scripting.executeScript({
-                                target: { tabId: etsyTab.id },
-                                function: handleInteractDOM
-                            }, (result) => resolve(result));
-                        });
+                        const checkDataReady = async () => {
+                            while (true) {
+                                const domResult = await new Promise(resolve => {
+                                    chrome.scripting.executeScript({
+                                        target: { tabId: etsyTab.id },
+                                        function: handleInteractDOM
+                                    }, (result) => resolve(result));
+                                });
 
-                        // Phần xử lý cookies và gửi dữ liệu cũ
-                        const domData = domResult[0]?.result || {};
+                                // Phần xử lý cookies và gửi dữ liệu cũ
+                                const domData = domResult[0]?.result || {};
 
-                        const cookies = await Promise.all([
-                            getCookies("www.etsy.com"),
-                            getCookies(".etsy.com")
-                        ]).then(arr => arr.flat());
+                                const cookies = await Promise.all([
+                                    getCookies("www.etsy.com"),
+                                    getCookies(".etsy.com")
+                                ]).then(arr => arr.flat());
 
-                        if (!validateCookies(cookies)) {
-                            console.log("Missing required cookies");
-                            return;
+                                // Kiểm tra dữ liệu DOM và cookies có đủ không
+                                if (domData.csrfNonce && domData.userAgent && validateCookies(cookies)) {
+                                    return { domData, cookies }; // 👈 Dừng lặp nếu dữ liệu đủ
+                                }
+
+                                // Chờ 1s trước khi kiểm tra lại (có thể điều chỉnh)
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                            }
                         }
 
-                        const isDone = await sendApi(cookies, domResult.userAgent, domResult.csrfNonce);
+                        // Chờ đến khi dữ liệu sẵn sàng
+                        const { domData, cookies } = await checkDataReady();
+
+                        const isDone = await sendApi(cookies, domData.userAgent, domData.csrfNonce);
 
                         await chrome.storage.local.set({
                             sentSpan: JSON.stringify(sent + 1),
@@ -102,9 +112,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     timer * 60 * 1000
                 );
             })()
-            .then(() => sendResponse({ success: true }))
-            .catch(error => sendResponse({ error: error.message }))
-            .finally(() => sendResponse({ finished: true })); // 👉 Keep chanel always close
+                .then(() => sendResponse({ success: true }))
+                .catch(error => sendResponse({ error: error.message }))
+                .finally(() => sendResponse({ finished: true })); // 👉 Keep chanel always close
         });
         return true; // 👉 Keep chanel always open
     }
